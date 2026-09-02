@@ -2,34 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
+import torchvision.transforms.functional as TF
 
 from .vlm_backbone import VLMBackbone
 from .action_head import FlowMatchingActionHead
 
 
-def tile_camera_views(image_tensors: list[torch.Tensor]) -> list[Image.Image]:
-    """
-    PaliGemma expects one image per sample. For multi-camera setups (e.g. LIBERO's
-    agent view + wrist view), the simplest fix without modifying the VLM is to tile
-    the views side by side into a single composite image before passing them in.
-    If you'd rather keep views separate, swap this for a VLM that natively supports
-    multiple images (e.g. Qwen2.5-VL) instead — that's a one-line change to
-    vlm_backbone.py's model class.
-    """
-    tiled = []
-    for views in image_tensors:  # views: list of (C, H, W) tensors for one sample
-        pil_views = [
-            Image.fromarray((v.permute(1, 2, 0).clamp(0, 1).cpu().numpy() * 255).astype("uint8"))
-            for v in views
-        ]
-        widths, heights = zip(*(im.size for im in pil_views))
-        composite = Image.new("RGB", (sum(widths), max(heights)))
-        x_off = 0
-        for im in pil_views:
-            composite.paste(im, (x_off, 0))
-            x_off += im.width
-        tiled.append(composite)
-    return tiled
+def to_pil(image_tensor: torch.Tensor, resize: int) -> Image.Image:
+    """(C, H, W) float tensor in [0,1] -> resized PIL image."""
+    img = TF.resize(image_tensor, [resize, resize], antialias=True)
+    arr = (img.permute(1, 2, 0).clamp(0, 1).cpu().numpy() * 255).astype("uint8")
+    return Image.fromarray(arr)
 
 
 class VLA(nn.Module):
@@ -39,31 +22,36 @@ class VLA(nn.Module):
         self.backbone = VLMBackbone(cfg)
         self.action_head = FlowMatchingActionHead(cfg, self.backbone.hidden_size)
 
+    def _prepare_images(self, batch_or_obs: dict, batch_size: int) -> list[list[Image.Image]]:
+        """Returns, per sample, a list of resized PIL images (one per camera key)."""
+        cfg = self.cfg
+        images_per_sample = []
+        for i in range(batch_size):
+            views = [to_pil(batch_or_obs[k][i], cfg.image_resize) for k in cfg.image_keys]
+            images_per_sample.append(views)
+        return images_per_sample
+
     def compute_loss(self, batch: dict) -> torch.Tensor:
         """
         batch keys expected (straight from a LeRobotDataset DataLoader with
         delta_timestamps set on 'action'):
-            batch["observation.images.image"]         (B, C, H, W)
-            batch["observation.images.image2"]        (B, C, H, W)
+            batch["observation.images.image"]        (B, C, H, W)
+            batch["observation.images.wrist_image"]   (B, C, H, W)
             batch["observation.state"]                (B, state_dim)
             batch["action"]                           (B, chunk, action_dim)
-            batch["task"]                             list[str], language instructions
+            batch["task"]                              list[str], language instructions
         """
         device = next(self.parameters()).device
-        cfg = self.cfg
+        B = batch["action"].shape[0]
 
-        images = [
-            [batch[k][i] for k in cfg.image_keys] for i in range(batch["action"].shape[0])
-        ]
-        pil_images = tile_camera_views(images)
+        images_per_sample = self._prepare_images(batch, B)
         texts = batch["task"]
 
-        vlm_hidden, vlm_mask = self.backbone(pil_images, texts)
+        vlm_hidden, vlm_mask = self.backbone(images_per_sample, texts)
 
         state = batch["observation.state"].to(device)     # (B, state_dim=8)
         actions = batch["action"].to(device)               # (B, chunk, action_dim=7)
 
-        B, T, _ = actions.shape
         noise = torch.randn_like(actions)
         t = torch.rand(B, device=device)  # sample flow timestep per example
 
@@ -76,7 +64,7 @@ class VLA(nn.Module):
             noisy_actions=noisy_actions,
             timesteps=t,
             state=state,
-            vlm_hidden_states=vlm_hidden,
+            vlm_hidden_states=vlm_hidden.float(),
             vlm_attention_mask=vlm_mask,
         )
 
@@ -89,11 +77,12 @@ class VLA(nn.Module):
         device = next(self.parameters()).device
         cfg = self.cfg
 
-        images = [[observation[k] for k in cfg.image_keys]]
-        pil_images = tile_camera_views(images)
+        images_per_sample = self._prepare_images(
+            {k: v.unsqueeze(0) for k, v in observation.items() if k in cfg.image_keys}, 1
+        )
         texts = [observation["task"]]
 
-        vlm_hidden, vlm_mask = self.backbone(pil_images, texts)
+        vlm_hidden, vlm_mask = self.backbone(images_per_sample, texts)
         state = observation["observation.state"].unsqueeze(0).to(device)  # (1, state_dim=8)
 
         B = 1

@@ -1,2 +1,4 @@
 .venv/
-datasets/liber  o/
+datasets/libero/
+**/__pycache__/
+wandb/

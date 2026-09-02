@@ -1,16 +1,16 @@
 """
-Wraps a pretrained VLM(PaliGemma2-style) and exposes its per-token hidden states
-so the action head can cross-attend to them.
+Wraps a pretrained SmolVLM2 model and exposes its per-token hidden states so
+the action head can cross-attend to them.
 
-Why PaliGemma2: it's SigLIP (vision) + Gemma (language) already fused and
-pretrained together, which is what pi0 and most current VLAs build on. You get
-a working vision+language encoder in one call instead of hand-wiring SigLIP and
-a separate LM together.
+Why SmolVLM2 at this VRAM budget: at 256M-500M params, full fine-tuning
+(weights + grads + optimizer states + activations) fits comfortably in 8GB,
+SmolVLM2 is also what SmolVLA itself is built on, so this is a reasonable
+lineage to follow.
 """
 
 import torch
 import torch.nn as nn
-from transformers import AutoProcessor, PaliGemmaForConditionalGeneration
+from transformers import AutoProcessor, AutoModelForImageTextToText
 
 
 class VLMBackbone(nn.Module):
@@ -20,45 +20,59 @@ class VLMBackbone(nn.Module):
         dtype = torch.bfloat16 if cfg.vlm_dtype == "bfloat16" else torch.float32
 
         self.processor = AutoProcessor.from_pretrained(cfg.vlm_name_or_path)
-        self.vlm = PaliGemmaForConditionalGeneration.from_pretrained(
+        self.vlm = AutoModelForImageTextToText.from_pretrained(
             cfg.vlm_name_or_path, torch_dtype=dtype
         )
 
-        # Freezing options — useful if you OOM or want faster early iteration.
+        if cfg.gradient_checkpointing:
+            self.vlm.gradient_checkpointing_enable()
+
         if cfg.freeze_vision_encoder:
-            for p in self.vlm.vision_tower.parameters():
+            for p in self.vlm.model.vision_model.parameters():
                 p.requires_grad = False
         if cfg.freeze_language_model:
-            for p in self.vlm.language_model.parameters():
+            for p in self.vlm.model.text_model.parameters():
                 p.requires_grad = False
 
+        # SmolVLM2's text tower hidden size (works the same way across the family).
         self.hidden_size = self.vlm.config.text_config.hidden_size
 
-    def forward(self, images: list[torch.Tensor], texts: list[str]):
+    def _build_conversations(self, images_per_sample: list[list], texts: list[str]) -> list[list[dict]]:
         """
-        images: list of PIL images or pre-batched pixel tensors, one instruction's
-                worth of camera views concatenated (PaliGemma takes a single image
-                stream; multi-camera handling is done by tiling — see note below).
-        texts:  list[str], one language instruction per batch item.
+        images_per_sample: list of length B, each a list of PIL images (one per
+                            camera view) for that sample.
+        texts:              list of length B, one language instruction per sample.
+        """
+        conversations = []
+        for views, instruction in zip(images_per_sample, texts):
+            content = [{"type": "image", "image": img} for img in views]
+            content.append({"type": "text", "text": instruction})
+            conversations.append([{"role": "user", "content": content}])
+        return conversations
 
+    def forward(self, images_per_sample: list[list], texts: list[str]):
+        """
         Returns:
             hidden_states: (B, seq_len, hidden_size) — per-token features to
                             condition the action head on.
             attention_mask: (B, seq_len)
         """
-        inputs = self.processor(
-            text=texts,
-            images=images,
+        conversations = self._build_conversations(images_per_sample, texts)
+
+        inputs = self.processor.apply_chat_template(
+            conversations,
+            add_generation_prompt=False,
+            tokenize=True,
+            return_dict=True,
             return_tensors="pt",
             padding=True,
-        ).to(self.vlm.device, dtype=self.vlm.dtype if hasattr(self.vlm, "dtype") else None)
+        ).to(self.vlm.device)
 
-        outputs = self.vlm(
+        outputs = self.vlm.model(  # base model (not the generation head) — cheaper, gives hidden states
             **inputs,
             output_hidden_states=True,
             return_dict=True,
         )
-        # Last layer hidden states from the language model tower.
-        hidden_states = outputs.hidden_states[-1]
+        hidden_states = outputs.last_hidden_state
         attention_mask = inputs["attention_mask"]
         return hidden_states, attention_mask

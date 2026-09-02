@@ -5,10 +5,11 @@ from typing import List
 @dataclass
 class VLAConfig:
     # --- VLM backbone ---
-    vlm_name_or_path: str = "google/paligemma2-3b-pt-224"
-    freeze_vision_encoder: bool = False   # you have 64GB VRAM, full FT is fine to start
+    vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
+    freeze_vision_encoder: bool = False   # 500M fits full fine-tuning in 8GB; see README
     freeze_language_model: bool = False
     vlm_dtype: str = "bfloat16"           # "bfloat16" | "float32"
+    gradient_checkpointing: bool = True   # needed to stay inside 8GB
 
     # --- Robot / action spec (LIBERO) ---
     state_dim: int = 8
@@ -28,5 +29,19 @@ class VLAConfig:
 
     # --- Cameras (must match your LeRobotDataset feature keys) ---
     image_keys: List[str] = field(
-        default_factory=lambda: ["observation.images.image", "observation.images.wrist_image"]
+        default_factory=lambda: ["observation.images.image", "observation.images.image2"]
     )
+
+    # --- Memory knobs for 8GB VRAM ---
+    image_resize: int = 224               # downscale camera frames before the processor
+    train_batch_size: int = 1
+    grad_accum_steps: int = 8             # effective batch size = train_batch_size * grad_accum_steps
+
+    # --- Logging ---
+    use_wandb: bool = True
+    wandb_project: str = "dumE-vla"
+    wandb_run_name: str | None = None     # None -> wandb auto-generates one
+    log_every: int = 10                   # steps between wandb scalar logs
+    num_epochs: int = 5
+    learning_rate: float = 1e-4
+    weight_decay: float = 1e-5
