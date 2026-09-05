@@ -5,11 +5,11 @@ from typing import List
 @dataclass
 class VLAConfig:
     # --- VLM backbone ---
-    vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
-    freeze_vision_encoder: bool = False   # 500M fits full fine-tuning in 8GB; see README
+    vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct"
+    freeze_vision_encoder: bool = False    # 500M fits full fine-tuning in 8GB; see README
     freeze_language_model: bool = False
-    vlm_dtype: str = "bfloat16"           # "bfloat16" | "float32"
-    gradient_checkpointing: bool = True   # needed to stay inside 8GB
+    vlm_dtype: str = "bfloat16"            # "bfloat16" | "float32"
+    gradient_checkpointing: bool = False   # needed to stay inside 8GB
 
     # --- Robot / action spec (LIBERO) ---
     state_dim: int = 8
@@ -29,13 +29,12 @@ class VLAConfig:
 
     # --- Cameras (must match your LeRobotDataset feature keys) ---
     image_keys: List[str] = field(
-        default_factory=lambda: ["observation.images.image", "observation.images.image2"]
+        default_factory=lambda: ["observation.images.image", "observation.images.wrist_image"]
     )
 
     # --- Memory knobs for 8GB VRAM ---
     image_resize: int = 224               # downscale camera frames before the processor
-    train_batch_size: int = 1
-    grad_accum_steps: int = 8             # effective batch size = train_batch_size * grad_accum_steps
+    train_batch_size: int = 4
 
     # --- Logging ---
     use_wandb: bool = True

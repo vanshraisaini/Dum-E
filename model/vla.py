@@ -39,7 +39,7 @@ class VLA(nn.Module):
             batch["observation.images.wrist_image"]   (B, C, H, W)
             batch["observation.state"]                (B, state_dim)
             batch["action"]                           (B, chunk, action_dim)
-            batch["task"]                              list[str], language instructions
+            batch["task"]                             list[str], language instructions
         """
         device = next(self.parameters()).device
         B = batch["action"].shape[0]

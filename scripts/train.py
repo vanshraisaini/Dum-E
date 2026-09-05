@@ -23,8 +23,8 @@ def main():
         "action": [i / 10.0 for i in range(cfg.action_chunk_size)],  # fps=10 for LIBERO
     }
     dataset = LeRobotDataset(
-        repo_id="lerobot/libero",
-        root="datasets/libero",
+        repo_id="lerobot/libero_spatial_image",
+        root="datasets/libero_spatial_image",
         delta_timestamps=delta_timestamps,
     )
     loader = DataLoader(dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=2)
@@ -36,31 +36,26 @@ def main():
 
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
 
-    accum = cfg.grad_accum_steps
     global_step = 0
 
     for epoch in range(cfg.num_epochs):
-        optim.zero_grad()
         for step, batch in enumerate(loader):
-            loss = model.compute_loss(batch) / accum
+            
+            loss = model.compute_loss(batch)
+            optim.zero_grad()
             loss.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optim.step()
 
-            did_optim_step = (step + 1) % accum == 0
-            if did_optim_step:
-                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optim.step()
-                optim.zero_grad()
-                global_step += 1
-
-            full_loss = loss.item() * accum
+            global_step += 1
 
             if step % cfg.log_every == 0:
-                print(f"epoch {epoch} step {step} loss {full_loss:.4f}")
+                print(f"epoch {epoch} step {step} loss {loss.item():.4f}")
 
-            if cfg.use_wandb and did_optim_step:
+            if cfg.use_wandb and step % cfg.log_every == 0:
                 wandb.log(
                     {
-                        "train/loss": full_loss,
+                        "train/loss": loss.item(),
                         "train/grad_norm": grad_norm.item(),
                         "train/epoch": epoch,
                         "train/lr": optim.param_groups[0]["lr"],

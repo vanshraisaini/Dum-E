@@ -4,8 +4,13 @@ the action head can cross-attend to them.
 
 Why SmolVLM2 at this VRAM budget: at 256M-500M params, full fine-tuning
 (weights + grads + optimizer states + activations) fits comfortably in 8GB,
+unlike a 3B backbone which needs quantization/LoRA tricks to even load.
 SmolVLM2 is also what SmolVLA itself is built on, so this is a reasonable
 lineage to follow.
+
+Bonus: unlike PaliGemma (one image per sample), SmolVLM2 natively accepts
+multiple images in a single conversation turn — so both camera views (agent
+view + wrist view) can be passed in directly, no tiling hack needed.
 """
 
 import torch
@@ -21,9 +26,9 @@ class VLMBackbone(nn.Module):
 
         self.processor = AutoProcessor.from_pretrained(cfg.vlm_name_or_path)
         self.vlm = AutoModelForImageTextToText.from_pretrained(
-            cfg.vlm_name_or_path, torch_dtype=dtype
+            cfg.vlm_name_or_path, dtype=dtype, attn_implementation="sdpa"
         )
-
+    
         if cfg.gradient_checkpointing:
             self.vlm.gradient_checkpointing_enable()
 
@@ -59,11 +64,17 @@ class VLMBackbone(nn.Module):
         """
         conversations = self._build_conversations(images_per_sample, texts)
 
-        inputs = self.processor.apply_chat_template(
-            conversations,
-            add_generation_prompt=False,
-            tokenize=True,
-            return_dict=True,
+        prompts = self.processor.apply_chat_template(
+            conversation=conversations,
+            processor_kwargs={
+                "tokenize": False,
+                "add_generation_prompt": False
+            }
+        )
+
+        inputs = self.processor(
+            text=prompts,
+            images=images_per_sample,
             return_tensors="pt",
             padding=True,
         ).to(self.vlm.device)
