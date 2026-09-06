@@ -30,33 +30,38 @@ message_batch = [
             ]
         },
     ],
-    [
-        {
-            "role": "user",
-            "content": [
-                {"type": "image"},
-                {"type": "text", "text": "Which insect is in this image?"}
-            ]
-        },
-    ],
+    # [
+    #     {
+    #         "role": "user",
+    #         "content": [
+    #             {"type": "image"},
+    #             {"type": "text", "text": "Which insect is in this image?"}
+    #         ]
+    #     },
+    # ],
 
 ]
 
 # Prepare inputs
 prompt_batch = [processor.apply_chat_template(conversation=message, processor_kwargs = {"add_generation_prompt": True}) for message in message_batch]
-inputs = processor(text=prompt_batch, images=[[image1], [image2]], return_tensors="pt", padding=True)
+inputs = processor(text=prompt_batch, images=[[image1]], return_tensors="pt", padding=True)
 inputs = inputs.to(DEVICE)
 
+
+outputs = model(**inputs, return_dict=True, output_hidden_states=True)
+
+print((outputs.last_hidden_state))
+
 # Generate outputs
-generated_ids = model.generate(**inputs, max_new_tokens=500)
-generated_texts = processor.batch_decode(
-    generated_ids,
-    skip_special_tokens=True,
-)
+# generated_ids = model.generate(**inputs, max_new_tokens=500)
+# generated_texts = processor.batch_decode(
+#     generated_ids,
+#     skip_special_tokens=True,
+# )
 
 
-for i, text in enumerate(generated_texts):
-    print(f"Response for image {i+1}: {text}")
+# for i, text in enumerate(generated_texts):
+#     print(f"Response for image {i+1}: {text}")
 """
 Assistant: The first image shows a green statue of the Statue of Liberty standing on a stone pedestal in front of a body of water. 
 The statue is holding a torch in its right hand and a tablet in its left hand. The water is calm and there are no boats or other objects visible. 

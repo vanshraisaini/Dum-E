@@ -70,6 +70,7 @@ def main(cfg):
     train_dataset, val_dataset = get_datasets(cfg)
     
     loader = DataLoader(train_dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=cfg.train_batch_size, shuffle=False, num_workers=2)
 
     # --- Model ---
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -81,6 +82,8 @@ def main(cfg):
     global_step = 0
 
     for epoch in range(cfg.num_epochs):
+
+        #Model Training
         for step, batch in enumerate(loader):
             
             loss = model.compute_loss(batch)
@@ -105,10 +108,37 @@ def main(cfg):
                     step=global_step,
                 )
 
+        #Saving Checkpoint
         ckpt_path = f"checkpoint_epoch{epoch}.pt"
         torch.save(model.state_dict(), ckpt_path)
         if cfg.use_wandb:
             wandb.save(ckpt_path)  # uploads checkpoint alongside the run
+
+        # Model Validation
+        model.eval()
+        val_loss = 0.0
+        num_val_batches = 0
+        with torch.no_grad():
+            for batch in val_loader:
+                loss = model.compute_loss(batch)
+                val_loss += loss.item()
+                num_val_batches += 1
+        val_loss /= num_val_batches
+
+        print(
+            f"epoch {epoch} "
+            f"train_loss={loss.item():.4f} "
+            f"val_loss={val_loss:.4f}"
+        )
+
+        if cfg.use_wandb:
+            wandb.log(
+                {
+                    "val/loss": val_loss,
+                    "epoch": epoch,
+                },
+                step=global_step,
+            )
 
     if cfg.use_wandb:
         wandb.finish()
