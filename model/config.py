@@ -9,6 +9,13 @@ class VLAConfig:
     val_split: float = 0.1
     train_data_loader_workers: int = 4
 
+    # --- Optimizer ---
+    warmup_ratio: float = 0.02
+    learning_rate: float = 1e-4
+    weight_decay: float = 1e-5
+    num_epochs: int = 5
+    min_lr_rate: float = 0.1
+
     # --- VLM backbone ---
     vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct"
     freeze_vision_encoder: bool = False    # 500M fits full fine-tuning in 8GB; see README
@@ -46,6 +53,3 @@ class VLAConfig:
     wandb_project: str = "dumE-vla"
     wandb_run_name: str | None = None     # None -> wandb auto-generates one
     log_every: int = 10                   # steps between wandb scalar logs
-    num_epochs: int = 5
-    learning_rate: float = 1e-4
-    weight_decay: float = 1e-5

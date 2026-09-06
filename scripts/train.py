@@ -2,6 +2,7 @@ import torch
 import wandb
 import draccus
 from torch.utils.data import DataLoader
+from transformers import get_cosine_schedule_with_warmup
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
@@ -77,12 +78,17 @@ def main(cfg):
     model = VLA(cfg).to(device)
     model.train()
 
+    # --- Optimizer and Scheduler ---
     optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
+
+    total_steps = cfg.num_epochs * len(loader)
+    warmup_steps = int(cfg.warmup_ratio * total_steps)
+    scheduler = get_cosine_schedule_with_warmup(optim, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
 
     global_step = 0
 
     for epoch in range(cfg.num_epochs):
-
+        model.train()
         #Model Training
         for step, batch in enumerate(loader):
             
@@ -91,6 +97,7 @@ def main(cfg):
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optim.step()
+            scheduler.step()
 
             global_step += 1
 
