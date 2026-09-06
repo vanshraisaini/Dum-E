@@ -69,7 +69,7 @@ def main(cfg):
 
     train_dataset, val_dataset = get_datasets(cfg)
     
-    loader = DataLoader(train_dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=4)
+    loader = DataLoader(train_dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=8)
     val_loader = DataLoader(val_dataset, batch_size=cfg.train_batch_size, shuffle=False, num_workers=2)
 
     # --- Model ---
