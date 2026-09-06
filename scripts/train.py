@@ -1,5 +1,6 @@
 import torch
 import wandb
+import draccus
 from torch.utils.data import DataLoader
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
@@ -8,8 +9,56 @@ from model.config import VLAConfig
 from model.vla import VLA
 
 
-def main():
-    cfg = VLAConfig()
+def get_datasets(cfg):
+    print("Loading Datasets!")
+    delta_timestamps = {
+        "action": [i / 10.0 for i in range(cfg.action_chunk_size)],
+    }
+
+    # First load the full dataset just to get episode information
+    full_dataset = LeRobotDataset(
+        repo_id="lerobot/libero_spatial_image",
+        root="datasets/libero_spatial_image",
+        delta_timestamps=delta_timestamps,
+    )
+
+    num_episodes = full_dataset.num_episodes
+
+    generator = torch.Generator().manual_seed(cfg.seed)
+
+    episode_indices = torch.randperm(
+        num_episodes,
+        generator=generator
+    ).tolist()
+
+    num_val = int(num_episodes * cfg.val_split)
+
+    val_episodes = episode_indices[:num_val]
+    train_episodes = episode_indices[num_val:]
+
+    print(f"Total episodes: {num_episodes}")
+    print(f"Train episodes: {len(train_episodes)}")
+    print(f"Val episodes:   {len(val_episodes)}")
+
+    train_dataset = LeRobotDataset(
+        repo_id="lerobot/libero_spatial_image",
+        root="datasets/libero_spatial_image",
+        episodes=train_episodes,
+        delta_timestamps=delta_timestamps,
+    )
+
+    val_dataset = LeRobotDataset(
+        repo_id="lerobot/libero_spatial_image",
+        root="datasets/libero_spatial_image",
+        episodes=val_episodes,
+        delta_timestamps=delta_timestamps,
+    )
+
+    print("Datasets loaded!")
+    return train_dataset, val_dataset
+
+
+def main(cfg):
 
     if cfg.use_wandb:
         wandb.init(
@@ -18,16 +67,9 @@ def main():
             config=cfg.__dict__,
         )
 
-    # --- Dataset: matches what you already have working locally ---
-    delta_timestamps = {
-        "action": [i / 10.0 for i in range(cfg.action_chunk_size)],  # fps=10 for LIBERO
-    }
-    dataset = LeRobotDataset(
-        repo_id="lerobot/libero_spatial_image",
-        root="datasets/libero_spatial_image",
-        delta_timestamps=delta_timestamps,
-    )
-    loader = DataLoader(dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=2)
+    train_dataset, val_dataset = get_datasets(cfg)
+    
+    loader = DataLoader(train_dataset, batch_size=cfg.train_batch_size, shuffle=True, num_workers=4)
 
     # --- Model ---
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -73,4 +115,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cfg = draccus.parse(config_class=VLAConfig)
+    main(cfg)

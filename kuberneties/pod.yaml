@@ -23,26 +23,39 @@ spec:
   containers:
   - name: dum-e-training
 
-    image: vanshrai/dum_e_train:v0
+    image: vanshrai/dum_e_train:v1
 
     command: ["bash", "-c", "sleep infinity"]
 
+    env:
+    - name: WANDB_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: vrs-wandb-secret
+          key: api-key
+
     resources:
       requests:
-        cpu: "2"
-        memory: "8Gi"
+        cpu: "4"
+        memory: "32Gi"
         nvidia.com/gpu: 1
 
       limits:
-        cpu: "2"
-        memory: "8Gi"
+        cpu: "4"
+        memory: "32Gi"
         nvidia.com/gpu: 1
 
     volumeMounts:
     - name: data
       mountPath: /pvc
+    - name: dshm
+      mountPath: /dev/shm
 
   volumes:
   - name: data
     persistentVolumeClaim:
       claimName: streamvln-pvc
+  - name: dshm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 8Gi

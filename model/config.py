@@ -4,6 +4,10 @@ from typing import List
 
 @dataclass
 class VLAConfig:
+
+    seed: int = 42
+    val_split: float = 0.1
+
     # --- VLM backbone ---
     vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct"
     freeze_vision_encoder: bool = False    # 500M fits full fine-tuning in 8GB; see README

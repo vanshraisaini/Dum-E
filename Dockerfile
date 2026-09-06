@@ -10,11 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git nano \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /workspace/datasets
+RUN git clone https://github.com/vanshraisaini/Dum-E.git
 
-COPY datasets/libero_spatial_image/ /workspace/datasets/libero_spatial_image
-COPY model/ /workspace/model
-COPY scripts/ /workspace/scripts
-COPY requirements.txt /workspace/requirements.txt
+WORKDIR /workspace/Dum-E
+
+COPY datasets/libero_spatial_image/ /workspace/Dum-E/datasets/libero_spatial_image
 
 

@@ -17,21 +17,34 @@ model = AutoModelForImageTextToText.from_pretrained(
     # _attn_implementation="flash_attention_2" if DEVICE == "cuda" else "eager",
 ).to(DEVICE)
 
+processor.tokenizer.padding_side = "left"
+
 # Create input messages
-messages = [
-    {
-        "role": "user",
-        "content": [
-            {"type": "image"},
-            {"type": "image"},
-            {"type": "text", "text": "Can you describe the two images?"}
-        ]
-    },
+message_batch = [
+    [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image"},
+                {"type": "text", "text": "Can you describe the image?"}
+            ]
+        },
+    ],
+    [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image"},
+                {"type": "text", "text": "Which insect is in this image?"}
+            ]
+        },
+    ],
+
 ]
 
 # Prepare inputs
-prompt = processor.apply_chat_template(conversation=messages, processor_kwargs = {"add_generation_prompt": True})
-inputs = processor(text=prompt, images=[image1, image2], return_tensors="pt")
+prompt_batch = [processor.apply_chat_template(conversation=message, processor_kwargs = {"add_generation_prompt": True}) for message in message_batch]
+inputs = processor(text=prompt_batch, images=[[image1], [image2]], return_tensors="pt", padding=True)
 inputs = inputs.to(DEVICE)
 
 # Generate outputs
@@ -41,7 +54,9 @@ generated_texts = processor.batch_decode(
     skip_special_tokens=True,
 )
 
-print(generated_texts[0])
+
+for i, text in enumerate(generated_texts):
+    print(f"Response for image {i+1}: {text}")
 """
 Assistant: The first image shows a green statue of the Statue of Liberty standing on a stone pedestal in front of a body of water. 
 The statue is holding a torch in its right hand and a tablet in its left hand. The water is calm and there are no boats or other objects visible. 

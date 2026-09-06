@@ -24,6 +24,7 @@ cycler==0.12.1
 datasets==4.8.5
 debugpy==1.8.21
 dill==0.4.1
+docopt==0.6.2
 draccus==0.11.6
 easydict==1.13
 egl_probe==1.0.2
@@ -83,6 +84,7 @@ mypy_extensions==1.1.0
 nbformat==5.11.1
 nest-asyncio2==1.7.2
 networkx==3.6.1
+num2words==0.5.14
 numba==0.67.0
 numpy==2.2.6
 nvidia-cublas==13.1.0.3
