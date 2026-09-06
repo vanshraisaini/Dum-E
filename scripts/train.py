@@ -125,7 +125,7 @@ def main(cfg):
         model.eval()
         val_loss = 0.0
         num_val_batches = 0
-        with torch.no_grad():
+        with torch.inference_mode():
             for batch in val_loader:
                 loss = model.compute_loss(batch)
                 val_loss += loss.item()
@@ -134,7 +134,6 @@ def main(cfg):
 
         print(
             f"epoch {epoch} "
-            f"train_loss={loss.item():.4f} "
             f"val_loss={val_loss:.4f}"
         )
 
@@ -146,6 +145,10 @@ def main(cfg):
                 },
                 step=global_step,
             )
+
+        del loss, batch, val_loss
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
 
     if cfg.use_wandb:
         wandb.finish()

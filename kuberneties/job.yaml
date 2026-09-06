@@ -1,12 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dum-e-training2
+  name: dum-e-training
 spec:
   backoffLimit: 0
   template:
     metadata:
-      name: dum-e-training2
+      name: dum-e-training
     spec:
       restartPolicy: Never
       affinity:
@@ -23,7 +23,7 @@ spec:
                       - NVIDIA-GeForce-RTX-3090
                       - NVIDIA-GeForce-RTX-4090
       containers:
-        - name: dum-e-training2
+        - name: dum-e-training
           image: vanshrai/dum_e_train:v1
           command: ["bash", "-c", "git pull origin main && python3 -m scripts.train 
             --train_batch_size=8 --freeze_vision_encoder=false --gradient_checkpointing=true"
