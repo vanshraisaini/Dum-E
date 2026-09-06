@@ -7,6 +7,7 @@ class VLAConfig:
 
     seed: int = 42
     val_split: float = 0.1
+    train_data_loader_workers: int = 4
 
     # --- VLM backbone ---
     vlm_name_or_path: str = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct"

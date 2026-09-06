@@ -1,12 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dum-e-training
+  name: dum-e-training2
 spec:
   backoffLimit: 0
   template:
     metadata:
-      name: dum-e-training
+      name: dum-e-training2
     spec:
       restartPolicy: Never
       affinity:
@@ -23,10 +23,10 @@ spec:
                       - NVIDIA-GeForce-RTX-3090
                       - NVIDIA-GeForce-RTX-4090
       containers:
-        - name: dum-e-training
+        - name: dum-e-training2
           image: vanshrai/dum_e_train:v1
           command: ["bash", "-c", "git pull origin main && python3 -m scripts.train 
-            --train_batch_size=8 --freeze_vision_encoder=true --gradient_checkpointing=true"
+            --train_batch_size=8 --freeze_vision_encoder=false --gradient_checkpointing=true"
           ]
           env:
             - name: WANDB_API_KEY
@@ -44,14 +44,14 @@ spec:
               memory: "32Gi"
               nvidia.com/gpu: 1
           volumeMounts:
-            - name: data
-              mountPath: /pvc
+          #   - name: data
+          #     mountPath: /pvc
             - name: dshm
               mountPath: /dev/shm
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: streamvln-pvc
+        # - name: data
+        #   persistentVolumeClaim:
+        #     claimName: streamvln-pvc
         - name: dshm
           emptyDir:
             medium: Memory
