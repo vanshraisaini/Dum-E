@@ -6,7 +6,7 @@ from transformers import get_cosine_schedule_with_warmup
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
-from model.config import VLAConfig
+from config.train_model_config import VLAConfig
 from model.vla import VLA
 
 

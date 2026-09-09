@@ -89,6 +89,7 @@ class VLA(nn.Module):
         x = torch.randn(B, cfg.action_chunk_size, cfg.action_dim, device=device)
         dt = 1.0 / cfg.num_inference_steps
 
+        vlm_hidden = vlm_hidden.float()  # (1, seq_len, hidden_size)
         for step in range(cfg.num_inference_steps):
             t = torch.full((B,), step * dt, device=device)
             v = self.action_head(
