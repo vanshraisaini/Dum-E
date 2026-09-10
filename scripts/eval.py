@@ -76,6 +76,8 @@ def main(cfg):
 
     task_ids = cfg.eval.task_ids
 
+    success_count = 0
+
     for task_id in task_ids:
 
         video_recorder = VideoRecorder(f"{cfg.eval.output_dir}/libero_{task_id}.mp4", fps=20, frame_size=(256, 256))
@@ -104,10 +106,16 @@ def main(cfg):
 
             if(done):
                 print(f"Episode finished after {step + 1} eval steps.")
+                success_count+=1
                 break
 
         video_recorder.release()
         env.close()
+
+    print("Evaluation complete!")
+    print("Total Episodes = ", len(task_ids))
+    print(f"Successful Epiosodes = {success_count}")
+    print("Success Rate = ", (success_count/len(task_ids))*100, "%")
 
 
 if __name__ == "__main__":
