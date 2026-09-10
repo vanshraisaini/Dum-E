@@ -86,7 +86,7 @@ def main(cfg):
         env, obs = setup_env(task_suite, task_id)
         language_instruction = task_suite.get_task(task_id).language
 
-        video_recorder.write_frame(obs["agentview_image"])
+        video_recorder.write_frame(obs["agentview_image"], language_instruction)
 
         done = False
 
@@ -100,7 +100,7 @@ def main(cfg):
                 action = action_chunk[i].cpu().numpy()
 
                 obs, reward, done, info = env.step(action)
-                video_recorder.write_frame(obs["agentview_image"])
+                video_recorder.write_frame(obs["agentview_image"], language_instruction)
                 if(done):
                     break
 

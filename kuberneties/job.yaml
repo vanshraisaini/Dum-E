@@ -26,7 +26,7 @@ spec:
         - name: dum-e-training
           image: vanshrai/dum_e_train:v1
           command: ["bash", "-c", "git pull origin main && python3 -m scripts.train 
-            --train_batch_size=8 --freeze_vision_encoder=false --gradient_checkpointing=true"
+            --train_batch_size=8 --freeze_vision_encoder=false --gradient_checkpointing=true --num_epochs=10"
           ]
           env:
             - name: WANDB_API_KEY

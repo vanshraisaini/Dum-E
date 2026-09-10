@@ -8,11 +8,13 @@ Think of this as a tinkering playground: dataset loaders, a small model in `mode
 Results
 ----------
 
-Below are example runs demonstrating the Dum-E model behavior on Libero spatial images.
+Below are example runs demonstrating the Dum-E model behavior on Libero spatial environment.
 
 <p align="center">
 	<img src="assets/libero_4.gif" alt="libero_4" width="45%" />
 	<img src="assets/libero_6.gif" alt="libero_6" width="45%" />
+    <img src="assets/libero_3.gif" alt="libero_4" width="45%" />
+    <img src="assets/libero_5.gif" alt="libero_4" width="45%" />
 </p>
 
 Quickstart
