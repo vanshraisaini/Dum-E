@@ -5,6 +5,16 @@ A lightweight repo for training a VLA-style model on the LeRobot/Libero spatial 
 
 Think of this as a tinkering playground: dataset loaders, a small model in `model/`, and a minimal training loop in `scripts/train.py`.
 
+Results
+----------
+
+Below are example runs demonstrating the Dum-E model behavior on Libero spatial images.
+
+<p align="center">
+	<img src="assets/libero_4.gif" alt="libero_4" width="45%" />
+	<img src="assets/libero_6.gif" alt="libero_6" width="45%" />
+</p>
+
 Quickstart
 ----------
 
