@@ -5,6 +5,8 @@ A lightweight repo for training a VLA-style model on the LeRobot/Libero spatial 
 
 Think of this as a tinkering playground: dataset loaders, a small model in `model/`, and a minimal training loop in `scripts/train.py`.
 
+The model uses a SmolVLM visual language backbone(Configurable) + a flow matching action head to predict actions conditioned on the language instruction and the image input. 
+
 Results
 ----------
 
