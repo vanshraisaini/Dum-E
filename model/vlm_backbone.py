@@ -1,16 +1,6 @@
 """
 Wraps a pretrained SmolVLM2 model and exposes its per-token hidden states so
 the action head can cross-attend to them.
-
-Why SmolVLM2 at this VRAM budget: at 256M-500M params, full fine-tuning
-(weights + grads + optimizer states + activations) fits comfortably in 8GB,
-unlike a 3B backbone which needs quantization/LoRA tricks to even load.
-SmolVLM2 is also what SmolVLA itself is built on, so this is a reasonable
-lineage to follow.
-
-Bonus: unlike PaliGemma (one image per sample), SmolVLM2 natively accepts
-multiple images in a single conversation turn — so both camera views (agent
-view + wrist view) can be passed in directly, no tiling hack needed.
 """
 
 import torch
